@@ -1,133 +1,82 @@
+import { scrapeShop } from './scraper';
+import { CheerioAPI } from 'cheerio';
+
+export interface Card {
+  name: string;
+  price: number;
+  imageUrl: string;
+  rarity: string;
+  shop: string;
+}
+
 export interface Shop {
   id: string;
   name: string;
   url: string;
-  searchUrl: string;
+  searchUrl: string | ((query: string) => string);
+  scrape?: ($: CheerioAPI) => Card[];
 }
 
 export const CARD_SHOPS: Shop[] = [
   {
-    id: 'cardrush',
-    name: 'カードラッシュ',
-    url: 'https://www.cardrush-pokemon.jp',
-    searchUrl: 'https://www.cardrush-pokemon.jp/product-list?keyword={query}'
-  },
-  {
-    id: 'surugaya',
-    name: '駿河屋',
-    url: 'https://www.suruga-ya.jp',
-    searchUrl: 'https://www.suruga-ya.jp/search?category=1&search_word={query}'
-  },
-  {
-    id: 'hareruya',
-    name: '晴れる屋',
-    url: 'https://www.hareruya2.com',
-    searchUrl: 'https://www.hareruya2.com/search/q={query}'
-  },
-  {
-    id: 'toretoku',
-    name: 'トレトク',
-    url: 'https://www.toretoku.jp',
-    searchUrl: 'https://www.toretoku.jp/items/search?q={query}'
-  },
-  {
-    id: 'yuyutei',
-    name: '遊々亭',
-    url: 'https://yuyu-tei.jp',
-    searchUrl: 'https://yuyu-tei.jp/game_poc/sell/sell_price.php?name={query}'
-  },
-  {
-    id: 'kanabell',
-    name: 'カーナベル',
-    url: 'https://www.ka-nabell.com',
-    searchUrl: 'https://www.ka-nabell.com/search?q={query}'
-  },
-  {
-    id: 'tcgshop193',
-    name: 'TCGshop193',
-    url: 'https://tcgshop193.com',
-    searchUrl: 'https://tcgshop193.com/index.php?main_page=advanced_search_result&keyword={query}'
-  },
-  {
-    id: 'bigweb',
-    name: 'Bigweb',
-    url: 'https://www.bigweb.co.jp',
-    searchUrl: 'https://www.bigweb.co.jp/ver2/pokemon_list.php?search={query}'
-  },
-  {
-    id: 'fullahead',
-    name: 'フルアヘッド',
-    url: 'https://www.fullahead.jp',
-    searchUrl: 'https://www.fullahead.jp/search/index?keyword={query}'
-  },
-  {
-    id: 'mercard',
-    name: 'メルカード',
-    url: 'https://www.mercard.jp',
-    searchUrl: 'https://www.mercard.jp/search?q={query}'
-  },
-  {
-    id: 'fukufuku',
-    name: 'ふくふくトレカ',
-    url: 'https://fukufuku-trading.com',
-    searchUrl: 'https://fukufuku-trading.com/products/search?q={query}'
-  },
-  {
-    id: 'torecajapan',
-    name: 'トレカジパング',
-    url: 'https://www.torecajapan.com',
-    searchUrl: 'https://www.torecajapan.com/products/search?q={query}'
-  },
-  {
     id: 'cardlabo',
     name: 'カードラボ',
     url: 'https://www.c-labo-online.jp',
-    searchUrl: 'https://www.c-labo-online.jp/product-list?keyword={query}'
-  },
-  {
-    id: 'torecolo',
-    name: 'トレコロ',
-    url: 'https://www.torecolo.jp',
-    searchUrl: 'https://www.torecolo.jp/shop/goods/search.aspx?keyword={query}'
-  },
-  {
-    id: 'hanjou',
-    name: 'はんじょう',
-    url: 'https://www.cardshop-hanjou.jp',
-    searchUrl: 'https://www.cardshop-hanjou.jp/products/search?q={query}'
-  },
-  {
-    id: 'minny',
-    name: 'minny',
-    url: 'https://www.minny.jp',
-    searchUrl: 'https://www.minny.jp/products/search?q={query}'
-  },
-  {
-    id: 'serra',
-    name: 'セラ',
-    url: 'https://www.serra.jp',
-    searchUrl: 'https://www.serra.jp/product-list?keyword={query}'
-  },
-  {
-    id: 'cardmax',
-    name: 'カードマックス',
-    url: 'https://www.cardmax.jp',
-    searchUrl: 'https://www.cardmax.jp/shop/goods/search.aspx?keyword={query}'
+    searchUrl: (query: string) => `https://www.c-labo-online.jp/product-list?keyword=${encodeURIComponent(query)}&Submit=`,
+    scrape: ($: CheerioAPI) => {
+      const cards: Card[] = [];
+      $('.list_item').each((_, element) => {
+        const $item = $(element);
+        const name = $item.find('h2.item_name a').text().trim();
+        const priceText = $item.find('.selling_price').text().trim();
+        const price = parseInt(priceText.replace(/[^0-9]/g, ''), 10);
+        const imageUrl = $item.find('.global_photo img').attr('src') || '';
+        const soldOut = $item.find('.soldout').length > 0;
+        const stockText = $item.find('.stock_number').text().trim();
+        const stockMatch = stockText.match(/在庫数\s*(\d+)枚/);
+        const stockQuantity = stockMatch ? parseInt(stockMatch[1], 10) : 0;
+        
+        console.log('Found card:', {
+          name,
+          price,
+          imageUrl,
+          soldOut,
+          stockQuantity,
+          stockText
+        });
+        
+        if (name && !isNaN(price)) {
+          cards.push({
+            name,
+            price,
+            imageUrl,
+            rarity: '', // レアリティ情報は後で追加
+            shop: 'カードラボ'
+          });
+        }
+      });
+      
+      console.log(`Total cards found: ${cards.length}`);
+      return cards;
+    }
   }
 ];
 
 export interface CardPrice {
   shopId: string;
   shopName: string;
+  name: string;
   price: number;
   condition: string;
   url: string;
   lastUpdated: Date;
   timestamp: number;
   stock: {
-    status: 'in_stock' | 'low_stock' | 'out_of_stock';
-    quantity?: number;
+    status: 'in_stock' | 'out_of_stock';
+    quantity: number;
   };
+  rarity?: string;
+  imageUrl?: string;
 }
 
 export interface CardInfo {
@@ -145,18 +94,10 @@ const CACHE_EXPIRY = 60 * 60 * 1000;
 
 export async function searchCards(query: string): Promise<CardInfo[]> {
   try {
-    // 1. まずキャッシュから高速に結果を返す
-    const cachedResults = await searchFromCache(query);
-    if (cachedResults.length > 0) {
-      // 2. バックグラウンドで最新データを取得
-      updatePricesInBackground(query, cachedResults);
-      return cachedResults;
-    }
-
-    // 3. キャッシュにない場合は実際に検索
-    return await searchFromShops(query);
+    const results = await searchFromShops(query);
+    return results;
   } catch (error) {
-    console.error('カード検索エラー:', error);
+    console.error('検索エラー:', error);
     throw error;
   }
 }
@@ -218,46 +159,43 @@ function updateCache(query: string, cards: CardInfo[], newPrices: CardPrice[]) {
 }
 
 async function searchFromShops(query: string): Promise<CardInfo[]> {
-  const allPrices: CardPrice[] = [];
-  
-  // 並列でスクレイピングを実行
-  const promises = CARD_SHOPS.map(shop => scrapeShop(shop, query));
-  const results = await Promise.allSettled(promises);
-  
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') {
-      allPrices.push(...result.value);
-    } else {
-      console.error(`${CARD_SHOPS[index].name}のスクレイピングに失敗:`, result.reason);
+  const results: CardInfo[] = [];
+  const seenNames = new Set<string>();
+
+  for (const shop of CARD_SHOPS) {
+    try {
+      const prices = await scrapeShop(shop, query);
+      
+      for (const price of prices) {
+        if (!seenNames.has(price.name)) {
+          seenNames.add(price.name);
+          results.push({
+            id: `${shop.id}-${price.name}`,
+            name: price.name,
+            rarity: price.rarity || '',
+            expansion: price.expansion || '',
+            cardNumber: price.cardNumber || '',
+            imageUrl: '',
+            prices: [price]
+          });
+        } else {
+          const existingCard = results.find(card => card.name === price.name);
+          if (existingCard) {
+            existingCard.prices.push(price);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`${shop.name}の検索エラー:`, error);
     }
+  }
+
+  // 価格でソート
+  results.sort((a, b) => {
+    const minPriceA = Math.min(...a.prices.map(p => p.price));
+    const minPriceB = Math.min(...b.prices.map(p => p.price));
+    return minPriceA - minPriceB;
   });
 
-  // 商品ごとにグループ化
-  const cardGroups = new Map<string, CardInfo>();
-  
-  allPrices.forEach(price => {
-    const cardInfo = parseCardInfo(price.url);
-    const key = `${cardInfo.name}-${cardInfo.rarity}-${cardInfo.expansion}`;
-    
-    if (!cardGroups.has(key)) {
-      cardGroups.set(key, {
-        id: key,
-        ...cardInfo,
-        cardNumber: '',  // スクレイピングから取得
-        imageUrl: '',    // スクレイピングから取得
-        prices: []
-      });
-    }
-    
-    cardGroups.get(key)?.prices.push(price);
-  });
-
-  // キャッシュに保存
-  const cards = Array.from(cardGroups.values());
-  cache.set(query, {
-    data: cards,
-    timestamp: Date.now()
-  });
-
-  return cards;
+  return results;
 } 

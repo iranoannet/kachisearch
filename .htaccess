@@ -9,7 +9,7 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
 # Rewrite all other requests to index.html
-RewriteRule ^(.*)$ /index.html [L]
+RewriteRule ^(.*)$ index.html [L]
 
 # Set default character set
 AddDefaultCharset UTF-8
@@ -47,8 +47,7 @@ AddType application/font-woff2 .woff2
 
 # Allow access to all files
 <FilesMatch "\.(html|htm|js|css|jpg|jpeg|png|gif|ico|svg|woff|woff2)$">
-  Order Allow,Deny
-  Allow from all
+  Require all granted
 </FilesMatch>
 
 # Set directory index
@@ -57,12 +56,11 @@ DirectoryIndex index.html
 # Prevent directory listing
 Options -Indexes
 
-# Allow access to all
-<Directory "/">
-  Order Allow,Deny
-  Allow from all
-  Require all granted
+# Directory settings
+<Directory "/home/xs704823/xs704823.xsrv.jp/public_html">
   Options FollowSymLinks
+  AllowOverride All
+  Require all granted
 </Directory>
 
 # Security headers

@@ -1,11 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 常に静的エクスポートを有効化
-  output: 'export',
-  
   // 画像の設定
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
   
   // 型チェックをスキップしてビルドを成功させる
@@ -24,11 +27,29 @@ const nextConfig = {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
-        crypto: require.resolve('crypto-browserify'),
-        stream: require.resolve('stream-browserify'),
-        buffer: require.resolve('buffer/'),
+        crypto: false,
+        stream: false,
+        buffer: false,
       };
     }
+
+    // undiciモジュールの設定
+    config.module.rules.push({
+      test: /\.m?js/,
+      resolve: {
+        fullySpecified: false
+      }
+    });
+
+    // undiciのエラーを解決するための設定
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+      dns: false,
+    };
+
     return config;
   },
 };
